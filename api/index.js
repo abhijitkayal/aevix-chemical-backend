@@ -26,34 +26,62 @@ import saleRoutes from '../routes/SaleRoutes.js';
 
 const app = express();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// MongoDB connection
+// MongoDB connection with caching for serverless
 let cachedDb = null;
 
 async function connectToDatabase() {
-  if (cachedDb) {
+  if (cachedDb && mongoose.connection.readyState === 1) {
     return cachedDb;
   }
 
-  const connection = await mongoose.connect("mongodb+srv://HACK:giDCgxy2d3HiO7IE@hackethic.ozjloba.mongodb.net/aevix_chemical?retryWrites=true&w=majority&appName=HACKETHIC");
-  
-  cachedDb = connection;
-  console.log("MongoDB Connected");
-  return connection;
+  try {
+    const connection = await mongoose.connect("mongodb+srv://HACK:giDCgxy2d3HiO7IE@hackethic.ozjloba.mongodb.net/aevix_chemical?retryWrites=true&w=majority&appName=HACKETHIC", {
+      serverSelectionTimeoutMS: 5000,
+    });
+    
+    cachedDb = connection;
+    console.log("MongoDB Connected");
+    return connection;
+  } catch (error) {
+    console.error("MongoDB connection error:", error);
+    throw error;
+  }
 }
 
-// Connect to database
-connectToDatabase().catch(err => console.error(err));
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "Aevix Chemical Backend API is running",
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
+});
 
-// Routes
+app.get("/api", (req, res) => {
+  res.json({ 
+    message: "Aevix Chemical Backend API",
+    version: "1.0.0",
+    endpoints: [
+      "/api/auth",
+      "/api/invoices",
+      "/api/warehouses",
+      "/api/products",
+      "/api/clients"
+    ]
+  });
+});
+
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/purchase-invoices", purchaseInvoiceRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/products", productRoutes);
-app.use('/uploads', express.static('uploads'));
 app.use('/api/inward-payments', inwardPaymentRoutes);
 app.use("/api/outward-payments", outwardPaymentRoutes);
 app.use("/api/credit-notes", creditNoteRoutes);
@@ -72,9 +100,30 @@ app.use("/api/order-acknowledgements", OrderAcknowledgement);
 app.use("/api/clients", clientRoutes);
 app.use("/api/sales", saleRoutes);
 
-// Root endpoint
-app.get("/", (req, res) => {
-  res.json({ message: "Aevix Chemical Backend API is running" });
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: 'Internal Server Error',
+    message: err.message 
+  });
 });
 
-export default app;
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found', path: req.path });
+});
+
+// Vercel serverless function handler
+export default async function handler(req, res) {
+  try {
+    await connectToDatabase();
+    return app(req, res);
+  } catch (error) {
+    console.error('Handler error:', error);
+    return res.status(500).json({ 
+      error: 'Database connection failed',
+      message: error.message 
+    });
+  }
+}
