@@ -61,6 +61,12 @@ app.use("/api/order-acknowledgements",OrderAcknowledgement);
 app.use("/api/clients", clientRoutes);
 app.use("/api/sales", saleRoutes);
 
-app.listen(5000, () => {
-  console.log("Server running on port 5000");
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(5000, () => {
+    console.log("Server running on port 5000");
+  });
+}
+
+// Export for Vercel serverless
+export default app;
