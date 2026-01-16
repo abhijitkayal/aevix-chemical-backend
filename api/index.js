@@ -1,28 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import warehouseRoutes from "../routes/WarehouseRoutes.js";
-import invoiceRoutes from "../routes/InvoiceRoutes.js";
-import productRoutes from "../routes/ProductRoutes.js";
-import inwardPaymentRoutes from "../routes/InwardpaymentRoutes.js"
-import outwardPaymentRoutes from "../routes/OutwardpaymentRoutes.js";
-import creditNoteRoutes from "../routes/CreditnoteRoutes.js";
-import debitNoteRoutes from "../routes/DebitnoteRoutes.js";
-import proformaRoutes from "../routes/ProformaRoutes.js";
-import packingRoutes from "../routes/PackinglistRoutes.js";
-import deliveryChallanRoutes from "../routes/DeliverychallanRoutes.js";
-import quotationRoutes from "../routes/QuotationRoute.js";
-import stockRoutes from "../routes/StockRoutes.js";
-import jobworkRoutes from "../routes/JobworkRoutes.js";
-import movementRoutes from "../routes/MovementRoutes.js";
-import userRoutes from "../routes/UserRoutes.js";
-import RoleRoutes from "../routes/RoleRoutes.js";
-import leadsRoutes from "../routes/LeadRoutes.js";
-import OrderAcknowledgement from "../routes/Orderacknowledgement.js";
-import purchaseInvoiceRoutes from "../routes/PurchaseinvoiceRoutes.js";  
-import authRoutes from '../routes/AuthRoutes.js';
-import clientRoutes from '../routes/ClientRoutes.js';
-import saleRoutes from '../routes/SaleRoutes.js';
 
 const app = express();
 
@@ -32,21 +10,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB connection with caching for serverless
-let cachedDb = null;
+let isConnected = false;
 
 async function connectToDatabase() {
-  if (cachedDb && mongoose.connection.readyState === 1) {
-    return cachedDb;
+  if (isConnected && mongoose.connection.readyState === 1) {
+    console.log('Using existing MongoDB connection');
+    return;
   }
 
   try {
-    const connection = await mongoose.connect("mongodb+srv://HACK:giDCgxy2d3HiO7IE@hackethic.ozjloba.mongodb.net/aevix_chemical?retryWrites=true&w=majority&appName=HACKETHIC", {
+    await mongoose.connect("mongodb+srv://HACK:giDCgxy2d3HiO7IE@hackethic.ozjloba.mongodb.net/aevix_chemical?retryWrites=true&w=majority&appName=HACKETHIC", {
       serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
     });
     
-    cachedDb = connection;
+    isConnected = true;
     console.log("MongoDB Connected");
-    return connection;
   } catch (error) {
     console.error("MongoDB connection error:", error);
     throw error;
@@ -76,29 +55,116 @@ app.get("/api", (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use("/api/invoices", invoiceRoutes);
-app.use("/api/purchase-invoices", purchaseInvoiceRoutes);
-app.use("/api/warehouses", warehouseRoutes);
-app.use("/api/products", productRoutes);
-app.use('/api/inward-payments', inwardPaymentRoutes);
-app.use("/api/outward-payments", outwardPaymentRoutes);
-app.use("/api/credit-notes", creditNoteRoutes);
-app.use("/api/debit-notes", debitNoteRoutes);
-app.use("/api/proforma", proformaRoutes);
-app.use("/api/packing-list", packingRoutes);
-app.use("/api/delivery-challan", deliveryChallanRoutes);
-app.use("/api/quotations", quotationRoutes);
-app.use("/api/stocks", stockRoutes);
-app.use("/api/jobworks", jobworkRoutes);
-app.use("/api/movements", movementRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/roles", RoleRoutes);
-app.use("/api/leads", leadsRoutes);
-app.use("/api/order-acknowledgements", OrderAcknowledgement);
-app.use("/api/clients", clientRoutes);
-app.use("/api/sales", saleRoutes);
+// Lazy load routes after DB connection
+app.use('/api/auth', async (req, res, next) => {
+  const authRoutes = (await import('../routes/AuthRoutes.js')).default;
+  authRoutes(req, res, next);
+});
+
+app.use("/api/invoices", async (req, res, next) => {
+  const invoiceRoutes = (await import('../routes/InvoiceRoutes.js')).default;
+  invoiceRoutes(req, res, next);
+});
+
+app.use("/api/purchase-invoices", async (req, res, next) => {
+  const purchaseInvoiceRoutes = (await import('../routes/PurchaseinvoiceRoutes.js')).default;
+  purchaseInvoiceRoutes(req, res, next);
+});
+
+app.use("/api/warehouses", async (req, res, next) => {
+  const warehouseRoutes = (await import('../routes/WarehouseRoutes.js')).default;
+  warehouseRoutes(req, res, next);
+});
+
+app.use("/api/products", async (req, res, next) => {
+  const productRoutes = (await import('../routes/ProductRoutes.js')).default;
+  productRoutes(req, res, next);
+});
+
+app.use('/api/inward-payments', async (req, res, next) => {
+  const inwardPaymentRoutes = (await import('../routes/InwardpaymentRoutes.js')).default;
+  inwardPaymentRoutes(req, res, next);
+});
+
+app.use("/api/outward-payments", async (req, res, next) => {
+  const outwardPaymentRoutes = (await import('../routes/OutwardpaymentRoutes.js')).default;
+  outwardPaymentRoutes(req, res, next);
+});
+
+app.use("/api/credit-notes", async (req, res, next) => {
+  const creditNoteRoutes = (await import('../routes/CreditnoteRoutes.js')).default;
+  creditNoteRoutes(req, res, next);
+});
+
+app.use("/api/debit-notes", async (req, res, next) => {
+  const debitNoteRoutes = (await import('../routes/DebitnoteRoutes.js')).default;
+  debitNoteRoutes(req, res, next);
+});
+
+app.use("/api/proforma", async (req, res, next) => {
+  const proformaRoutes = (await import('../routes/ProformaRoutes.js')).default;
+  proformaRoutes(req, res, next);
+});
+
+app.use("/api/packing-list", async (req, res, next) => {
+  const packingRoutes = (await import('../routes/PackinglistRoutes.js')).default;
+  packingRoutes(req, res, next);
+});
+
+app.use("/api/delivery-challan", async (req, res, next) => {
+  const deliveryChallanRoutes = (await import('../routes/DeliverychallanRoutes.js')).default;
+  deliveryChallanRoutes(req, res, next);
+});
+
+app.use("/api/quotations", async (req, res, next) => {
+  const quotationRoutes = (await import('../routes/QuotationRoute.js')).default;
+  quotationRoutes(req, res, next);
+});
+
+app.use("/api/stocks", async (req, res, next) => {
+  const stockRoutes = (await import('../routes/StockRoutes.js')).default;
+  stockRoutes(req, res, next);
+});
+
+app.use("/api/jobworks", async (req, res, next) => {
+  const jobworkRoutes = (await import('../routes/JobworkRoutes.js')).default;
+  jobworkRoutes(req, res, next);
+});
+
+app.use("/api/movements", async (req, res, next) => {
+  const movementRoutes = (await import('../routes/MovementRoutes.js')).default;
+  movementRoutes(req, res, next);
+});
+
+app.use("/api/users", async (req, res, next) => {
+  const userRoutes = (await import('../routes/UserRoutes.js')).default;
+  userRoutes(req, res, next);
+});
+
+app.use("/api/roles", async (req, res, next) => {
+  const roleRoutes = (await import('../routes/RoleRoutes.js')).default;
+  roleRoutes(req, res, next);
+});
+
+app.use("/api/leads", async (req, res, next) => {
+  const leadsRoutes = (await import('../routes/LeadRoutes.js')).default;
+  leadsRoutes(req, res, next);
+});
+
+app.use("/api/order-acknowledgements", async (req, res, next) => {
+  const orderAcknowledgement = (await import('../routes/Orderacknowledgement.js')).default;
+  orderAcknowledgement(req, res, next);
+});
+
+app.use("/api/clients", async (req, res, next) => {
+  const clientRoutes = (await import('../routes/ClientRoutes.js')).default;
+  clientRoutes(req, res, next);
+});
+
+app.use("/api/sales", async (req, res, next) => {
+  const saleRoutes = (await import('../routes/SaleRoutes.js')).default;
+  saleRoutes(req, res, next);
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
