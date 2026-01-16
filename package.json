@@ -2,11 +2,11 @@
   "name": "aevix-chemical-backend",
   "version": "1.0.0",
   "description": "Aevix Chemical Backend API",
-  "main": "server/server.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server/server.js",
-    "dev": "nodemon server/server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
